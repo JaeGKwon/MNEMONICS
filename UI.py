@@ -3,11 +3,9 @@ import openai
 import requests
 from bs4 import BeautifulSoup
 import re
-import json
-import os
 import pandas as pd
 
-# Set page config
+# App config
 st.set_page_config(
     page_title="Historical Event Mnemonics",
     page_icon="🏛️",
@@ -15,10 +13,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Load OpenAI API key from secrets
+# Load OpenAI API key from Streamlit secrets
 openai.api_key = st.secrets.get("openai_api_key", "")
 
-# Custom CSS for better styling
+# Custom CSS
 st.markdown("""
 <style>
     .main-header {
@@ -61,10 +59,9 @@ historical_events_db = {
     2001: ["9/11 terrorist attacks"],
     2020: ["COVID-19 pandemic", "George Floyd protests"],
     2022: ["Russia invades Ukraine", "Queen Elizabeth II dies"]
-    # Add more as needed...
 }
 
-# Function: Get event description from Wikipedia
+# Get event info from Wikipedia
 def get_event_info(event):
     event_url = event.replace(" ", "_")
     wiki_link = f"https://en.wikipedia.org/wiki/{event_url}"
@@ -82,24 +79,24 @@ def get_event_info(event):
     except:
         return default_description, wiki_link
 
-# Function: Generate mnemonic
+# Generate mnemonic
 def generate_mnemonic(event, year, api_key):
     if not api_key:
-        return "Please enter an OpenAI API key to generate mnemonics.", "", ""
+        return "Missing OpenAI API key.", "", ""
     description, wiki_link = get_event_info(event)
     year_str = str(year)[1:]
     mnemonic_letters = ' '.join(digit_to_letter[d] for d in year_str)
     prompt = (
         f"Create a memorable mnemonic phrase for high school students about the historical event '{event}' that occurred in {year}.\n\n"
-        f"The mnemonic should use the letters {mnemonic_letters} (which come from the year {year} without the first digit).\n\n"
-        f"Each letter should start a word in the mnemonic phrase. Relate the phrase to what happened: {description}"
+        f"The mnemonic should use the letters {mnemonic_letters} (from the last 3 digits of the year).\n\n"
+        f"Each letter should be the first letter of each word. Make it engaging and educational. Here's the event summary: {description}"
     )
     try:
         client = openai.OpenAI(api_key=api_key)
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are a creative educational assistant who creates memorable mnemonics for high school students."},
+                {"role": "system", "content": "You are a creative educational assistant who creates memorable mnemonics for historical events."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=150
@@ -107,22 +104,19 @@ def generate_mnemonic(event, year, api_key):
         mnemonic = response.choices[0].message.content.strip()
         return mnemonic, description, wiki_link
     except Exception as e:
-        return f"Error generating mnemonic: {str(e)}", "", ""
+        return f"Error: {str(e)}", "", ""
 
-# === UI Starts ===
-
+# === App UI ===
 st.title("🏛️ Historical Event Mnemonics Generator")
 st.markdown("### Learn history dates with memorable mnemonics!")
 
-# Sidebar
+# Sidebar instructions
 with st.sidebar:
     st.header("How It Works")
     st.markdown("""
-    This app creates mnemonics to help remember historical dates:
-    
-    1. Select a year from history  
-    2. Choose or enter an event  
-    3. Get a mnemonic based on letter codes from the date
+    1. Choose a year  
+    2. Select or enter a historical event  
+    3. Get a mnemonic using letter mapping from the year  
 
     **Digit → Letter Mapping:**
 
@@ -130,42 +124,44 @@ with st.sidebar:
     - 5 = S, 6 = G, 7 = L, 8 = B, 9 = P  
     """)
 
-# Input Section
+# Input section
 with st.container():
     st.markdown('<div class="input-section">', unsafe_allow_html=True)
-    col1, col2 = st.columns([1, 2])
 
-    with col1:
-        years = sorted(historical_events_db.keys(), reverse=True)
-        selected_year = st.selectbox("Select a Year:", years)
-        event_options = historical_events_db[selected_year]
-        input_type = st.radio("Event Input:", ["Select from database", "Enter my own event"])
-        selected_event = st.text_input("Enter the historical event:") if input_type == "Enter my own event" else st.selectbox("Select an Event:", event_options)
+    years = sorted(historical_events_db.keys(), reverse=True)
+    selected_year = st.selectbox("Select a Year:", years)
 
-    with col2:
-        col_btn1, _ = st.columns([2, 1])
-        with col_btn1:
-            generate_button = st.button("Generate Mnemonic", use_container_width=True)
+    event_options = historical_events_db[selected_year]
+    input_type = st.radio("Event Input:", ["Select from database", "Enter my own event"])
 
-        if generate_button:
-            if not openai.api_key:
-                st.error("API key not found in secrets.")
-            elif not selected_event.strip():
-                st.error("Please enter or select an event.")
-            else:
-                with st.spinner("Generating mnemonic..."):
-                    mnemonic, desc, link = generate_mnemonic(selected_event, selected_year, openai.api_key)
-                    st.session_state.mnemonic = mnemonic
-                    st.session_state.description = desc
-                    st.session_state.wiki_link = link
-                    st.session_state.event = selected_event
-                    st.session_state.year = selected_year
+    if input_type == "Enter my own event":
+        selected_event = st.text_input("Enter the historical event:")
+    else:
+        selected_event = st.selectbox("Select an Event:", event_options)
+
+    # Button positioned below inputs
+    generate_button = st.button("Generate Mnemonic", use_container_width=True)
+
+    if generate_button:
+        if not openai.api_key:
+            st.error("API key not found.")
+        elif not selected_event.strip():
+            st.error("Please enter or select an event.")
+        else:
+            with st.spinner("Generating mnemonic..."):
+                mnemonic, desc, link = generate_mnemonic(selected_event, selected_year, openai.api_key)
+                st.session_state.mnemonic = mnemonic
+                st.session_state.description = desc
+                st.session_state.wiki_link = link
+                st.session_state.event = selected_event
+                st.session_state.year = selected_year
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Divider
 st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
-# Output Section
+# Output section
 with st.container():
     st.markdown('<div class="output-section">', unsafe_allow_html=True)
     st.markdown("## 📋 Results")
@@ -173,17 +169,18 @@ with st.container():
 
     if 'mnemonic' in st.session_state:
         st.header(f"{st.session_state.event} ({st.session_state.year})")
+
         year_str = str(st.session_state.year)[1:]
         letters = [digit_to_letter[d] for d in year_str]
-        conversion_df = pd.DataFrame({"Digit": list(year_str), "Letter": letters})
-        
+        df = pd.DataFrame({"Digit": list(year_str), "Letter": letters})
+
         st.markdown("### Year Digits to Letters:")
-        st.dataframe(conversion_df, hide_index=True, use_container_width=False)
+        st.dataframe(df, hide_index=True)
 
         st.markdown("### Your Mnemonic:")
         st.markdown(f"""
         <div style="padding: 15px; border-radius: 5px; background-color: #e8f4f8; border-left: 5px solid #4CAF50;">
-            <h4 style="margin-top: 0;">Mnemonic Phrase:</h4>
+            <strong>Mnemonic Phrase:</strong>
             <p>{st.session_state.mnemonic}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -202,12 +199,12 @@ with st.container():
             </div>
         </a>
         """, unsafe_allow_html=True)
-
     else:
         st.info("Select a year and event, then click 'Generate Mnemonic' to see results here.")
         st.image("https://via.placeholder.com/600x300.png?text=Historical+Event+Mnemonics", caption="Select an event to generate a mnemonic")
+
     st.markdown('</div>', unsafe_allow_html=True)
 
 # Footer
 st.markdown("---")
-st.markdown("*Built to make history fun and memorable for students!*")
+st.markdown("*This app helps students remember historical events using mnemonics based on dates.*")
