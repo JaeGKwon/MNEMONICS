@@ -174,7 +174,7 @@ st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
 # Output section
 with st.container():
-    st.markdown('<div class="output-section">', unsafe_allow_html=True)
+    #st.markdown('<div class="output-section">', unsafe_allow_html=True)
     st.markdown("## 📋 Results")
     st.markdown("---")
 
