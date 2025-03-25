@@ -119,8 +119,9 @@ def generate_mnemonic(event, year, api_key):
         return f"Error: {str(e)}", "", ""
 
 # === App UI ===
-st.title("🏛️ Historical Event Mnemonics Generator")
-st.markdown("### Learn history dates with memorable mnemonics!")
+with st.container():
+    st.markdown("## 🏛️ Historical Event Mnemonics Generator", unsafe_allow_html=True)
+    st.markdown("### <span style='color: #333;'>Learn history dates with memorable mnemonics!</span>", unsafe_allow_html=True)
 
 # Sidebar instructions
 with st.sidebar:
@@ -151,7 +152,6 @@ with st.container():
     else:
         selected_event = st.selectbox("Select an Event:", event_options)
 
-    # Red-colored button
     generate_button = st.button("Generate Mnemonic", use_container_width=True)
 
     if generate_button:
