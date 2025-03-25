@@ -14,7 +14,8 @@ st.set_page_config(
 )
 
 # Load OpenAI API key from Streamlit secrets
-openai.api_key = st.secrets.get("openai_api_key", "")
+#openai.api_key = st.secrets.get("openai_api_key", "")
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Custom CSS
 st.markdown("""
