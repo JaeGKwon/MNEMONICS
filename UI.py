@@ -138,7 +138,7 @@ with st.sidebar:
 
 # Input section
 with st.container():
-    st.markdown('<div class="input-section">', unsafe_allow_html=True)
+    #st.markdown('<div class="input-section">', unsafe_allow_html=True)
 
     years = sorted(historical_events_db.keys(), reverse=True)
     selected_year = st.selectbox("Select a Year:", years)
