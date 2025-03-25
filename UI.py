@@ -9,9 +9,36 @@ import os
 # Set page config
 st.set_page_config(
     page_title="Historical Event Mnemonics",
-    page_icon="📚",
-    layout="wide"
+    page_icon="🏛️",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .main-header {
+        font-family: 'Georgia', serif;
+    }
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+    .input-section {
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+    .output-section {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #e6e6e6;
+        margin-top: 20px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Initialize OpenAI API key (use environment variable in production)
 openai.api_key = st.sidebar.text_input("Enter your OpenAI API key:", type="password")
@@ -231,9 +258,10 @@ Simply select a year, enter any historical event, and get a custom mnemonic to h
 col1, col2 = st.columns([1, 2])
 
 with col1:
-    # Year selection
+    # Year selection with a more professional look
     years = sorted(historical_events_db.keys(), reverse=True)
-    selected_year = st.selectbox("Select a Year:", years)
+    selected_year = st.selectbox("Select a Year:", years, 
+                               help="Choose the year when the historical event occurred")
     
     # Event selection based on year with direct input option
     event_options = historical_events_db[selected_year]
@@ -251,8 +279,21 @@ with col1:
         selected_event = st.selectbox("Select an Event:", event_options, 
                                      help="These are common events from this year")
     
-    # Generate button
-    if st.button("Generate Mnemonic"):
+with col2:
+    # API key reminder
+    if not openai.api_key:
+        st.warning("⚠️ Remember to enter your OpenAI API key in the sidebar", icon="⚠️")
+    
+    # More styling on the generate button
+    col_btn1, col_btn2 = st.columns([2, 1])
+    with col_btn1:
+        generate_button = st.button("Generate Mnemonic", 
+                                   type="primary", 
+                                   use_container_width=True,
+                                   help="Click to create your mnemonic")
+
+    # Handle button action        
+    if generate_button:
         if not openai.api_key:
             st.error("Please enter your OpenAI API key in the sidebar.")
         elif not selected_event.strip():
@@ -268,32 +309,74 @@ with col1:
                 st.session_state.event = selected_event
                 st.session_state.year = selected_year
 
-with col2:
-    # Display mnemonic and event info
-    if 'mnemonic' in st.session_state:
-        st.header(f"{st.session_state.event} ({st.session_state.year})")
-        
-        # Display the year digits and corresponding letters
-        year_str = str(st.session_state.year)[1:]  # Remove first digit
-        letters = [digit_to_letter[digit] for digit in year_str]
-        
-        st.markdown("### Year Digits → Letters:")
-        digit_cols = st.columns(len(year_str))
-        for i, (digit, letter) in enumerate(zip(year_str, letters)):
-            with digit_cols[i]:
-                st.markdown(f"**{digit} → {letter}**")
-        
-        st.markdown("### Your Mnemonic:")
-        st.success(st.session_state.mnemonic)
-        
-        st.markdown("### Event Description:")
-        st.info(st.session_state.description)
-        
-        st.markdown(f"[Learn more about this event on Wikipedia]({st.session_state.wiki_link})")
-    else:
-        st.info("Select a year and event, then click 'Generate Mnemonic' to create a memorable phrase.")
-        st.image("https://via.placeholder.com/600x300.png?text=Historical+Event+Mnemonics", 
-                 caption="Select an event to generate a mnemonic")
+# Clear separation for results section
+if 'mnemonic' in st.session_state:
+    st.markdown("## 📋 Results")
+    st.markdown("---")
+    
+    # Display event header
+    st.header(f"{st.session_state.event} ({st.session_state.year})")
+    
+    # Create a professional looking year-to-letter conversion table
+    year_str = str(st.session_state.year)[1:]  # Remove first digit
+    letters = [digit_to_letter[digit] for digit in year_str]
+    
+    st.markdown("### Year Digits to Letters Conversion:")
+    
+    # Create a more professional looking table for the conversion
+    conversion_data = {
+        "Digit": list(year_str),
+        "Letter": letters
+    }
+    
+    # Use a styled dataframe for better appearance
+    import pandas as pd
+    conversion_df = pd.DataFrame(conversion_data)
+    st.dataframe(
+        conversion_df,
+        column_config={
+            "Digit": st.column_config.Column("Digit", width="medium"),
+            "Letter": st.column_config.Column("Letter", width="medium")
+        },
+        hide_index=True,
+        use_container_width=False
+    )
+    
+    # Display mnemonic in a prominent way
+    st.markdown("### Your Mnemonic:")
+    st.markdown("""
+    <div style="padding: 15px; border-radius: 5px; background-color: #e8f4f8; border-left: 5px solid #4CAF50;">
+        <h4 style="margin-top: 0;">{}</h4>
+        <p>{}</p>
+    </div>
+    """.format(
+        "Mnemonic Phrase:",
+        st.session_state.mnemonic
+    ), unsafe_allow_html=True)
+    
+    # Event description in a card-like container
+    st.markdown("### Event Description:")
+    st.markdown("""
+    <div style="padding: 15px; border-radius: 5px; background-color: #f5f5f5; border: 1px solid #ddd;">
+        {}
+    </div>
+    """.format(st.session_state.description), unsafe_allow_html=True)
+    
+    # Wikipedia link as a button
+    st.markdown("""
+    <a href="{}" target="_blank" style="text-decoration: none;">
+        <div style="padding: 10px; text-align: center; background-color: #4169E1; color: white; border-radius: 5px; margin-top: 15px;">
+            Learn more about this event on Wikipedia
+        </div>
+    </a>
+    """.format(st.session_state.wiki_link), unsafe_allow_html=True)
+else:
+    # Display placeholder when no mnemonic has been generated
+    st.markdown("## 📋 Results")
+    st.markdown("---")
+    st.info("Select a year and event, then click 'Generate Mnemonic' to see results here.")
+    st.image("https://via.placeholder.com/600x300.png?text=Historical+Event+Mnemonics", 
+             caption="Select an event to generate a mnemonic")
 
 # Footer
 st.markdown("---")
